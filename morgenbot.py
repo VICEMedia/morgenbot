@@ -66,7 +66,7 @@ def init():
     topics = []
     time = []
     in_progress = True
-    post_message('%s, @here! Please type !start when you are ready to stand up.' % init_greeting)
+    post_message('%s, @here! Please type `standup !start` when you are ready to stand up. For help type `standup !help`' % init_greeting)
 
 def start():
     global time
@@ -75,7 +75,7 @@ def start():
         post_message('But we\'ve already started!')
         return
     time.append(datetime.datetime.now())
-    post_message('Let\'s get started! %s\nWhen you\'re done, please type !next' % start_message)
+    post_message('Let\'s get started! %s\nWhen you\'re done, please type `standup !next`' % start_message)
     next()
 
 def cancel():
