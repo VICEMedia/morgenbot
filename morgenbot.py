@@ -22,6 +22,7 @@ icon_emoji = os.getenv('ICON_EMOJI', ':coffee:')
 channel = os.getenv('CHANNEL', '#standup')
 ignore_users = os.getenv('IGNORE_USERS', '[]')
 
+
 init_greeting = os.getenv('INIT_GREETING', 'Good morning!')
 start_message = os.getenv('START_MESSAGE', 'What did you work on yesterday? What are you working on today? What, if any, are your blockers?')
 
@@ -33,8 +34,9 @@ users = []
 topics = []
 time = []
 in_progress = False
-current_user = ''
+current_user = {}
 absent_users = []
+offline_users = []
 
 def post_message(text, attachments=[]):
     slack.chat.post_message(channel     = channel,
@@ -58,7 +60,6 @@ def init():
     global topics
     global time
     global in_progress
-
     if len(users) != 0:
         post_message('Looks like we have a standup already in process.')
         return
@@ -103,11 +104,12 @@ def reset():
     del topics[:]
     del time[:]
     in_progress = False
-    current_user = ''
+    current_user = {}
 
 def standup_users():
     global ignore_users
     global absent_users
+    global offline_users
 
     ignore_users_array = eval(ignore_users)
 
@@ -125,8 +127,10 @@ def standup_users():
     for user_id in standup_users:
         user_name = slack.users.info(user_id).body['user']['name']
         is_deleted = slack.users.info(user_id).body['user']['deleted']
+        presence = slack.users.get_presence(user_id).body['presence']
         if not is_deleted and user_name not in ignore_users_array and user_name not in absent_users:
-            active_users.append(user_name)
+            user = { 'user_id': user_id, 'user_name': user_name, 'is_deleted': is_deleted, 'presence:' presence}
+            active_users.append(user)
 
     # don't forget to shuffle so we don't go in the same order every day!
     random.shuffle(active_users)
@@ -141,7 +145,16 @@ def next():
         done()
     else:
         current_user = users.pop()
-        post_message('@%s, you\'re up' % current_user)
+        if current_user['presence'] == 'active':
+            post_message('@%s, you\'re up' % current_user['user_name'])
+        else:
+            user_id = user_name['user_id']
+            latest_status = slack.users.get_presence(user_id).body['presence']
+            user_still_away = True if latest_status != 'active' else False
+            if user_still_away:
+                post_message('@%s, looks like you\'re away, we\'ll skip you' % current_user['user_name'])
+            else:
+                post_message('@%s, you\'re up' % current_user['user_name'])
 
 def standup_time():
     if len(time) != 2: return
@@ -153,45 +166,47 @@ def left():
     if len(users) == 0:
         post_message('That\'s everyone!')
     else:
-        post_message('Here\'s who\'s left: @' + ', @'.join(users))
+        remaining_users = map(lambda user:user['user_name'], users)
+        post_message('Here\'s who\'s left: @' + ', @'.join(remaining_users))
 
 def ignore(user):
     global ignore_users
     global absent_users
-    active_users = standup_users()
+    active_users = map(lambda user:user['user_name'], standup_users())
 
     if user == '':
         post_message('Who should I ignore?')
         return
 
-    user = user[1:]
-    if user not in active_users and user not in ignore_users and user not in absent_users:
+    user_name = user[1:]
+
+    if user_name not in active_users and user_name not in ignore_users and user_name not in absent_users:
         post_message('I don\'t recognize that user.')
-    elif user in ignore_users or user in absent_users:
+    elif user_name in ignore_users or user_name in absent_users:
         post_message('I\'m already ignoring that user.')
-    elif user in active_users:
+    elif user_name in active_users:
         absent_users.append(user)
         post_message('I won\'t call on @%s again until I am told to using !heed <username>.' % user)
 
 def heed(user):
     global ignore_users
     global absent_users
-    active_users = standup_users()
+    active_users = map(lambda user:user['user_name'], standup_users())
 
     if user == '':
         post_message('Who should I heed?')
         return
 
-    user = user[1:]
-    if user not in active_users and user not in ignore_users and user not in absent_users:
+    user_name = user[1:]
+    if user_name not in active_users and user_name not in ignore_users and user_name not in absent_users:
         post_message('I don\'t recognize that user.')
-    elif user in ignore_users:
+    elif user_name in ignore_users:
         post_message('We never call on that user. Try asking my admin to heed that username.')
-    elif user in active_users:
+    elif user_name in active_users:
         post_message('I\'m not ignoring that user.')
-    elif user in absent_users:
-        absent_users.remove(user)
-        post_message('I\'ll start calling on @%s again at the next standup.' % user)
+    elif user_name in absent_users:
+        absent_users.remove(user_name)
+        post_message('I\'ll start calling on @%s again at the next standup.' % user_name)
 
 def ignoring():
     global ignore_users
@@ -207,7 +222,7 @@ def ignoring():
         post_message('Here\'s who we\'re ignoring for now: ' + ', '.join(absent_users))
 
 def skip():
-    post_message('Skipping @%s.' % current_user)
+    post_message('Skipping @%s.' % current_user['user_name'])
     next()
 
 def table(topic_user, topic):
