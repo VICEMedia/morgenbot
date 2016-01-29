@@ -130,10 +130,11 @@ def standup_users():
         presence = slack.users.get_presence(user_id).body['presence']
         if not is_deleted and user_name not in ignore_users_array and user_name not in absent_users:
             user = {
-            'user_id': user_id,
-            'user_name': user_name,
-            'is_deleted': is_deleted,
-            'presence': presence }
+                'user_id': user_id,
+                'user_name': user_name,
+                'is_deleted': is_deleted,
+                'presence': presence
+            }
             active_users.append(user)
 
     # don't forget to shuffle so we don't go in the same order every day!
@@ -152,7 +153,7 @@ def next():
         if current_user['presence'] == 'active':
             post_message('@%s, you\'re up' % current_user['user_name'])
         else:
-            user_id = user_name['user_id']
+            user_id = current_user['user_id']
             latest_status = slack.users.get_presence(user_id).body['presence']
             user_still_away = True if latest_status != 'active' else False
             if user_still_away:
@@ -305,9 +306,7 @@ def main():
     # ignore message we sent
     msguser = request.form.get("user_name", "").strip()
     if msguser == username or msguser.lower() == "slackbot": return
-
     text = request.form.get("text", "")
-
     # find !command, but ignore <!command
     match = re.findall(r"(?<!<)!(\S+)", text)
     if not match: return
