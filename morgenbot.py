@@ -129,7 +129,11 @@ def standup_users():
         is_deleted = slack.users.info(user_id).body['user']['deleted']
         presence = slack.users.get_presence(user_id).body['presence']
         if not is_deleted and user_name not in ignore_users_array and user_name not in absent_users:
-            user = { 'user_id': user_id, 'user_name': user_name, 'is_deleted': is_deleted, 'presence:' presence}
+            user = {
+            'user_id': user_id,
+            'user_name': user_name,
+            'is_deleted': is_deleted,
+            'presence': presence }
             active_users.append(user)
 
     # don't forget to shuffle so we don't go in the same order every day!
