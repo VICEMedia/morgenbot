@@ -306,7 +306,9 @@ def main():
     # ignore message we sent
     msguser = request.form.get("user_name", "").strip()
     if msguser == username or msguser.lower() == "slackbot": return
+
     text = request.form.get("text", "")
+    
     # find !command, but ignore <!command
     match = re.findall(r"(?<!<)!(\S+)", text)
     if not match: return
