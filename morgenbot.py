@@ -304,10 +304,13 @@ def help(topic=''):
 @app.route("/", methods=['POST'])
 def main():
     # ignore message we sent
+    print(msguser)
     msguser = request.form.get("user_name", "").strip()
+    print(msguser)
     if msguser == username or msguser.lower() == "slackbot": return
 
     text = request.form.get("text", "")
+    print(text)
     
     # find !command, but ignore <!command
     match = re.findall(r"(?<!<)!(\S+)", text)
