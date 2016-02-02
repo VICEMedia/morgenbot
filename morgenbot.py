@@ -36,7 +36,6 @@ time = []
 in_progress = False
 current_user = {}
 absent_users = []
-offline_users = []
 
 def post_message(text, attachments=[]):
     slack.chat.post_message(channel     = channel,
@@ -109,7 +108,6 @@ def reset():
 def standup_users():
     global ignore_users
     global absent_users
-    global offline_users
 
     ignore_users_array = eval(ignore_users)
 
@@ -129,12 +127,7 @@ def standup_users():
         is_deleted = slack.users.info(user_id).body['user']['deleted']
         presence = slack.users.get_presence(user_id).body['presence']
         if not is_deleted and user_name not in ignore_users_array and user_name not in absent_users:
-            user = {
-                'user_id': user_id,
-                'user_name': user_name,
-                'is_deleted': is_deleted,
-                'presence': presence
-            }
+            user = {'user_id': user_id, 'user_name': user_name, 'is_deleted': is_deleted, 'presence': presence}
             active_users.append(user)
 
     # don't forget to shuffle so we don't go in the same order every day!
@@ -305,12 +298,8 @@ def help(topic=''):
 def main():
     # ignore message we sent
     msguser = request.form.get("user_name", "").strip()
-    print(msguser)
     if msguser == username or msguser.lower() == "slackbot": return
-
     text = request.form.get("text", "")
-    print(text)
-
     # find !command, but ignore <!command
     match = re.findall(r"(?<!<)!(\S+)", text)
     if not match: return
